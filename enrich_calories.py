@@ -27,7 +27,7 @@ load_dotenv()
 # --- Configuration ---
 DB_PATH = "data/lancedb"
 TABLE_NAME = "recipes"
-SPOONACULAR_API_URL = "https://api.spoonacular.com/recipes/analyzeRecipe"
+SPOONACULAR_API_URL = "https://api.spoonacular.com/recipes/analyze"
 SPOONACULAR_API_KEY = os.getenv("SPOONACULAR_API_KEY")
 
 # Rate limit handling
@@ -107,7 +107,10 @@ def analyze_calories(
 
     response = requests.post(
         SPOONACULAR_API_URL,
-        params={"apiKey": SPOONACULAR_API_KEY},
+        params={
+            "apiKey": SPOONACULAR_API_KEY,
+            "includeNutrition": "true"
+        },
         json=payload,
         timeout=30,
     )
