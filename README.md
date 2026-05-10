@@ -11,6 +11,7 @@
   - **Flexible Mode**: Find recipes you can *partially* make, prioritizing the ones closest to completion.
 - **AI Chat**: Chat with the "Culinary Compass AI" to get recipe recommendations with natural language queries (powered by Groq Llama).
 - **LLM Enrichment**: Recipes are enriched with AI-generated visual descriptions and tags (cuisine, diet, course, vibe) for better search results.
+- **Calorie Enrichment**: Optional per-serving calorie estimates with Low/Medium/High labels (Spoonacular API).
 
 ## 📁 Project Structure
 
@@ -22,6 +23,7 @@ FlavourSeeker/
 ├── ingest.py           # Phase 1: Data ingestion & embedding
 ├── enrich_recipes.py   # Phase 2: Resumable LLM enrichment
 ├── llm_enrichment.py   # Groq Vision API integration
+├── enrich_calories.py  # Resumable calorie enrichment (Spoonacular)
 ├── requirements.txt    # Python dependencies
 └── run_app.bat         # Windows launcher
 ```
@@ -68,6 +70,16 @@ python enrich_recipes.py --status    # Check progress
 - **Resumable**: Run multiple times to complete large datasets
 - Progress is saved after each recipe
 
+### Optional: Calorie Enrichment (Resumable, API)
+```bash
+python enrich_calories.py
+python enrich_calories.py --limit 50
+python enrich_calories.py --status
+```
+- Uses Spoonacular's `analyzeRecipe` API
+- Stores `calories_per_serving`, `calorie_level`, and `servings`
+- Requires `SPOONACULAR_API_KEY` in your `.env`
+
 ## 🚀 Running the App
 
 Start the Streamlit interface:
@@ -100,6 +112,9 @@ Or on Windows, double-click: `run_app.bat`
 | `image_name` | str | Image filename |
 | `visual_description` | str | AI-generated appearance description |
 | `tags` | list[str] | AI-generated tags (cuisine, diet, course, vibe) |
+| `servings` | int | Estimated serving count |
+| `calories_per_serving` | float | Estimated calories per serving |
+| `calorie_level` | str | Low/Medium/High calorie label |
 | `text_vector` | vector | Text embedding (384 dims) |
 | `image_vector` | vector | Image embedding (512 dims) |
 
