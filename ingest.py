@@ -7,7 +7,7 @@ from PIL import Image
 import torch
 import os
 import shutil
-from typing import List
+from typing import List, Optional
 
 # --- Configuration ---
 DATA_PATH = "Food Ingredients and Recipe Dataset with Image Name Mapping Final.csv"
@@ -35,6 +35,10 @@ class Recipe(LanceModel):
     # LLM Enrichment fields (added in Phase 2)
     visual_description: str = ""  # Short description of food appearance
     tags: List[str] = []  # Tags: cuisine, diet, course, vibe
+    # Calorie enrichment fields (optional)
+    servings: int = 1
+    calories_per_serving: Optional[float] = None
+    calorie_level: str = ""
     # The source field for text search (Combined Title + Ingredients + Instructions)
     search_text: str = embedding_func.SourceField()
     # The auto-generated vector field
@@ -102,6 +106,9 @@ def process_data():
             "image_name": str(image_name),
             "visual_description": "",  # Populated in Phase 2
             "tags": [],  # Populated in Phase 2
+            "servings": 1,
+            "calories_per_serving": None,
+            "calorie_level": "",
             "search_text": combined_text, # This will be vectorized automatically into 'text_vector'
             "image_vector": image_embedding
         })

@@ -30,6 +30,9 @@ Your job is to understand user requests and output a structured search plan.
 - `ingredients`: List of ingredients (use for "no X" exclusions)
 - `instructions`: Cooking steps (use for "no frying" etc.)
 - `tags`: AI tags like Cuisine, Diet, Course
+- `calories_per_serving`: Estimated calories per serving (may be missing)
+- `calorie_level`: Low/Medium/High based on calories_per_serving
+- `servings`: Estimated serving count
 
 **OUTPUT FORMAT (ALWAYS use this exact format):**
 ```
@@ -49,6 +52,7 @@ RESPONSE: <brief explanation to user>
 - **Exclude** cooking method: `instructions NOT LIKE '%fry%'`
 - **Filter by tag**: `tags LIKE '%Vegetarian%'` ✅ (Now supported!)
 - **Exclude by tag**: `tags NOT LIKE '%Meat%'`
+- **Filter by calories**: `calories_per_serving <= 400` or `calories_per_serving > 700`
 - **Multiple conditions**: `ingredients LIKE '%chicken%' AND tags LIKE '%Healthy%'`
 - No filter needed: `NONE`
 
@@ -72,8 +76,8 @@ RESPONSE: <brief explanation to user>
      - "Iron rich" → QUERY: spinach red meat lentils chickpeas beans
    
    - **Missing Metrics** (calories, time, serving size):
-     - "Low calorie" → QUERY: salad grilled vegetables steamed fish chicken broccoli greens
-     - RESPONSE: Note: We don't have calorie data. Here are dishes typically low in calories...
+         - "Low calorie" → FILTER: calories_per_serving <= 400
+         - RESPONSE: If calorie data is missing for some recipes, mention it briefly.
      - "Quick recipes" → QUERY: quick easy stir-fry wrap sandwich chicken vegetables
      - RESPONSE: Note: We don't have cooking times. Here are typically quick dishes...
    
@@ -179,6 +183,14 @@ QUERY: vegetarian pasta
 FILTER: tags LIKE '%Vegetarian%'
 FULL: NO
 RESPONSE: Vegetarian pasta dishes.
+```
+
+User: "low calorie dinner"
+```
+QUERY: dinner
+FILTER: calories_per_serving <= 400
+FULL: NO
+RESPONSE: Low-calorie dinner options (based on available calorie estimates).
 ```
 
 User: "How do I make mac and cheese?"
@@ -314,6 +326,13 @@ def search_with_filter(query: str, filter_str: str = None, show_full: bool = Fal
             
             if 'visual_description' in row and row['visual_description']:
                 response_parts.append(f"_{row['visual_description']}_")
+
+            calories = row.get("calories_per_serving") if hasattr(row, "get") else None
+            level = row.get("calorie_level") if hasattr(row, "get") else ""
+            if calories is not None and not (isinstance(calories, float) and calories != calories):
+                calories_int = int(round(float(calories)))
+                level_part = f" ({level})" if level else ""
+                response_parts.append(f"**Calories/serving:** {calories_int}{level_part}")
             
             response_parts.append(f"\n**Ingredients:**\n{row['ingredients']}")
             
@@ -353,6 +372,13 @@ def format_results(results_df, show_full: bool = False) -> str:
         
         if 'visual_description' in row and row['visual_description']:
             response_parts.append(f"_{row['visual_description']}_")
+
+        calories = row.get("calories_per_serving") if hasattr(row, "get") else None
+        level = row.get("calorie_level") if hasattr(row, "get") else ""
+        if calories is not None and not (isinstance(calories, float) and calories != calories):
+            calories_int = int(round(float(calories)))
+            level_part = f" ({level})" if level else ""
+            response_parts.append(f"**Calories/serving:** {calories_int}{level_part}")
         
         response_parts.append(f"\n**Ingredients:**\n{row['ingredients']}")
         

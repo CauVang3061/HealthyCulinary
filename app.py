@@ -26,6 +26,21 @@ st.title("Culinary Compass 🧭")
 st.markdown("### Find your next delicious meal!")
 
 # --- Helper Functions ---
+def format_calorie_line(row) -> str:
+    calories = row.get("calories_per_serving", None)
+    level = row.get("calorie_level", "")
+    servings = row.get("servings", None)
+
+    if calories is None:
+        return ""
+    if isinstance(calories, float) and calories != calories:
+        return ""
+
+    calories_int = int(round(float(calories)))
+    level_part = f" ({level})" if level else ""
+    servings_part = f" | Servings: {int(servings)}" if servings and str(servings).isdigit() else ""
+    return f"Calories/serving: {calories_int}{level_part}{servings_part}"
+
 def display_results(results_df):
     if results_df.empty:
         st.info("No recipes found matching your criteria.")
@@ -48,6 +63,10 @@ def display_results(results_df):
                 st.warning(f"Image not found: {image_name}")
 
             st.subheader(row['title'])
+
+            calorie_line = format_calorie_line(row)
+            if calorie_line:
+                st.caption(calorie_line)
             
             with st.expander("View Instructions"):
                 st.write("**Ingredients:**")
@@ -144,6 +163,10 @@ if 'active_recipe' not in st.session_state: # Only show search if not chatting
                             st.warning(f"Image not found: {image_name}")
 
                         st.subheader(row['title'])
+
+                        calorie_line = format_calorie_line(row)
+                        if calorie_line:
+                            st.caption(calorie_line)
                         
                         # Show missing ingredients if flexible mode
                         if not is_strict and 'missing_ingredients' in row and row['missing_ingredients']:
