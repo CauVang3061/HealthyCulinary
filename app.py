@@ -1,242 +1,221 @@
 import streamlit as st
 import os
+import ast
+import re
 from dotenv import load_dotenv
-
-load_dotenv()
 from PIL import Image
 from search_engine import RecipeSearchEngine
 
-# --- Configuration ---
+load_dotenv()
+
+
 st.set_page_config(page_title="Culinary Compass", page_icon="🧭", layout="wide")
 IMAGES_DIR = "Food Images"
 
-# --- Initialization ---
+states = {
+    'view': 'home',
+    'selected_recipe': None,
+    'search_results': None,
+    'search_type': None,
+    'chat_history': [],
+    'active_chat': False,
+    'main_query': "",
+    'fridge_input': "",
+    'is_strict': False,
+    'pantry_radio_index': 0
+}
+
+for key, default in states.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
 @st.cache_resource
-def get_search_engine_v3():
-    # Force cache reload after logic update
+def get_search_engine():
     return RecipeSearchEngine()
 
-engine = get_search_engine_v3()
+engine = get_search_engine()
 
-# --- UI Layout ---
-st.sidebar.title("Culinary Compass 🧭")
-search_mode = st.sidebar.radio("Search Mode", ["Search by Name", "Search by Image", "What's in my Fridge?", "AI Smart Search 🤖"])
-
-st.title("Culinary Compass 🧭")
-st.markdown("### Find your next delicious meal!")
-
-# --- Helper Functions ---
-def format_calorie_line(row) -> str:
-    calories = row.get("calories_per_serving", None)
-    level = row.get("calorie_level", "")
-    servings = row.get("servings", None)
-
-    if calories is None:
+def format_instruction_list(text):
+    if not text or str(text).lower() in ['nan', 'none', '']:
         return ""
-    if isinstance(calories, float) and calories != calories:
-        return ""
-
-    calories_int = int(round(float(calories)))
-    level_part = f" ({level})" if level else ""
-    servings_part = f" | Servings: {int(servings)}" if servings and str(servings).isdigit() else ""
-    return f"Calories/serving: {calories_int}{level_part}{servings_part}"
-
-def display_results(results_df):
-    if results_df.empty:
-        st.info("No recipes found matching your criteria.")
-        return
-
-    # Create a grid
-    cols = st.columns(3)
-    for i, (idx, row) in enumerate(results_df.iterrows()):
-        with cols[i % 3]:
-            # Load image
-            image_name = row['image_name']
-            if not image_name.lower().endswith(".jpg"):
-                image_name += ".jpg"
-            image_path = os.path.join(IMAGES_DIR, image_name)
-            
-            if os.path.exists(image_path):
-                image = Image.open(image_path)
-                st.image(image, use_container_width=True)
-            else:
-                st.warning(f"Image not found: {image_name}")
-
-            st.subheader(row['title'])
-
-            calorie_line = format_calorie_line(row)
-            if calorie_line:
-                st.caption(calorie_line)
-            
-            with st.expander("View Instructions"):
-                st.write("**Ingredients:**")
-                st.write(row['ingredients'])
-                st.write("**Instructions:**")
-                st.write(row['instructions'])
-            
-            # Chatbot feature
-            if st.button(f"Chat with {row['title']}", key=f"chat_{idx}"):
-                st.session_state['active_recipe'] = row['title']
-                st.session_state['chat_history'] = []
-                st.rerun()
-
-# --- Chat Interface (Overlay or separate section) ---
-if 'active_recipe' in st.session_state:
-    st.markdown("---")
-    st.subheader(f"Chatting about: {st.session_state['active_recipe']}")
-    if st.button("Close Chat"):
-        del st.session_state['active_recipe']
-        st.rerun()
+    items = []
+    if isinstance(text, list):
+        items = text
     else:
-        # Display chat history
-        messages = st.session_state.get('chat_history', [])
-        for msg in messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+        try:
+            parsed = ast.literal_eval(str(text))
+            items = parsed if isinstance(parsed, list) else [str(parsed)]
+        except:
+            items = str(text).split('\n')
+    cleaned = [f"* {re.sub(r'^[•\-\*]\s*', '', str(item)).strip()}" for item in items if str(item).strip()]
+    return "\n".join(cleaned)
 
-        if prompt := st.chat_input("Ask a question about this recipe..."):
-            # Add user message
-            st.session_state['chat_history'].append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+def get_recipe_image(image_name):
+    if not image_name or str(image_name).lower() == 'nan': return None
+    if not str(image_name).lower().endswith(".jpg"): image_name = f"{image_name}.jpg"
+    image_path = os.path.join(IMAGES_DIR, image_name)
+    return Image.open(image_path) if os.path.exists(image_path) else None
 
-            # Generate response (Placeholder)
-            response = f"That's a great question about {st.session_state['active_recipe']}! As an AI chef, I'd say: Use your best judgment and taste as you go."
-            
-            st.session_state['chat_history'].append({"role": "assistant", "content": response})
-            with st.chat_message("assistant"):
-                st.markdown(response)
+def render_search_ui():
+    st.title("Culinary Compass 🧭")
+    
+    query = st.text_input(
+        "Search by name, cuisine, or craving...", 
+        value=st.session_state.main_query,
+        key="query_widget"
+    )
+    st.session_state.main_query = query
 
-# --- Search Modes ---
-if 'active_recipe' not in st.session_state: # Only show search if not chatting
-    if search_mode == "Search by Name":
-        st.header("Search by Name")
-        query = st.text_input("Enter recipe name or description:")
-        if query:
-            with st.spinner("Searching..."):
-                results = engine.search_by_text(query)
-            display_results(results)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("🖼️ Images Search", use_container_width=True):
+            st.session_state.search_type = "image"
+    with c2:
+        if st.button("🧊 What's in My Fridge?", use_container_width=True):
+            st.session_state.search_type = "fridge"
+    with c3:
+        if st.button("🤖 Search Smart with AI", use_container_width=True):
+            st.session_state.view = 'ai_search'
+            st.rerun()
 
-    elif search_mode == "Search by Image":
-        st.header("Visual Search")
-        uploaded_file = st.file_uploader("Upload a food photo", type=["jpg", "png", "jpeg"])
-        if uploaded_file:
-            st.image(uploaded_file, caption="Uploaded Image", width=300)
-            with st.spinner("Analyzing image with AI (visual + semantic)..."):
-                # Use hybrid search: CLIP + LLM captioning
-                results = engine.search_by_image_hybrid(uploaded_file)
-            st.subheader("Best Matching Recipes")
-            display_results(results)
+    if query and query != st.session_state.get('last_query'):
+        with st.spinner("Searching..."):
+            st.session_state.search_results = engine.search_by_text(query)
+            st.session_state.search_type = "text"
+            st.session_state.last_query = query
 
-    elif search_mode == "What's in my Fridge?":
-        st.header("Pantry Search")
-        ingredients = st.text_area("Enter ingredients (comma separated):", "Eggs, Milk")
-        
-        # New: Search Mode Toggle
+    if st.session_state.search_type == "image":
+        uploaded = st.file_uploader("Upload food photo", type=["jpg", "png", "jpeg"])
+        if uploaded:
+            st.session_state.search_results = engine.search_by_image_hybrid(uploaded)
+    
+    if st.session_state.search_type == "fridge":
+        ing = st.text_area(
+            "Ingredients (comma separated):", 
+            value=st.session_state.fridge_input,
+            placeholder="Eggs, Milk, Flour...",
+            key="fridge_widget"
+        )
+        st.session_state.fridge_input = ing
+
+        options = ("Strict (I can make this now)", "Flexible (Suggestions with missing items)")
         pantry_mode = st.radio(
             "Filter Mode:",
-            ("Strict (I can make this now)", "Flexible (What can I make with more items?)"),
-            help="Strict: Recipes using ONLY what you have.\nFlexible: Recipes using what you have + suggestions."
+            options,
+            index=st.session_state.pantry_radio_index,
+            horizontal=True,
+            key="radio_widget"
         )
+        st.session_state.is_strict = pantry_mode.startswith("Strict")
+        st.session_state.pantry_radio_index = options.index(pantry_mode)
         
-        is_strict = pantry_mode.startswith("Strict")
-
         if st.button("Find Recipes"):
             with st.spinner("Checking the pantry..."):
-                results = engine.search_by_ingredients(ingredients, strict=is_strict)
-            
-            if not results.empty:
-                # Custom display for pantry results to show missing ingredients
-                cols = st.columns(3)
-                for i, (idx, row) in enumerate(results.iterrows()):
-                    with cols[i % 3]:
-                        # Load image
-                        image_name = row['image_name']
-                        if not image_name.lower().endswith(".jpg"):
-                            image_name += ".jpg"
+                st.session_state.search_results = engine.search_by_ingredients(ing, strict=st.session_state.is_strict)
 
-                        image_path = os.path.join(IMAGES_DIR, image_name)
-                        if os.path.exists(image_path):
-                            image = Image.open(image_path)
-                            st.image(image, use_container_width=True)
+def render_results_grid():
+    if st.session_state.search_results is not None:
+        results = st.session_state.search_results
+        if results.empty:
+            st.info("No recipes found matching those criteria.")
+            return
+
+        st.divider()
+        cols = st.columns(3)
+        for i, (idx, row) in enumerate(results.iterrows()):
+            with cols[i % 3]:
+                with st.container(border=True, height=500):
+                    img = get_recipe_image(row['image_name'])
+                    if img: st.image(img, use_container_width=True)
+                    
+                    if st.button(row['title'], key=f"btn_{idx}", use_container_width=True):
+                        st.session_state.selected_recipe = row
+                        st.session_state.view = 'detail'
+                        st.rerun()
+                    
+                    calories = row.get("calories_per_serving")
+                    if calories and str(calories).lower() != 'nan':
+                        st.caption(f"🔥 {int(float(calories))} Cal/serving")
+                    
+                    if st.session_state.search_type == "fridge":
+                        missing = row.get('missing_ingredients', [])
+                        if not missing:
+                            st.success("✅ Ready to cook!")
                         else:
-                            st.warning(f"Image not found: {image_name}")
+                            st.warning(f"⚠️ Missing {len(missing)} items")
 
-                        st.subheader(row['title'])
-
-                        calorie_line = format_calorie_line(row)
-                        if calorie_line:
-                            st.caption(calorie_line)
-                        
-                        # Show missing ingredients if flexible mode
-                        if not is_strict and 'missing_ingredients' in row and row['missing_ingredients']:
-                            st.error(f"Missing: {', '.join(row['missing_ingredients'])}")
-                        elif not is_strict:
-                            st.success("You have everything!")
-                        elif is_strict:
-                            st.success("You can make this!")
-
-                        with st.expander("View Instructions"):
-                            st.write("**Ingredients:**")
-                            st.write(row['ingredients'])
-                            st.write("**Instructions:**")
-                            st.write(row['instructions'])
-                        
-                        if st.button(f"Chat with {row['title']}", key=f"chat_{idx}"):
-                            st.session_state['active_recipe'] = row['title']
-                            st.session_state['chat_history'] = []
-                            st.rerun()
-            else:
-                 st.info("No recipes found. Try adding more ingredients or switching to Flexible mode.")
-
-    elif search_mode == "AI Smart Search 🤖":
-        st.header("Culinary Compass AI 🤖")
-        st.markdown("*Ask me anything! Upload a food photo, find recipes, or handle complex constraints.*")
-
-        if "agent_history" not in st.session_state:
-            st.session_state.agent_history = []
-        if "agent_image" not in st.session_state:
-            st.session_state.agent_image = None
-
-        # Image upload section
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            uploaded_image = st.file_uploader("📸 Upload food image", type=["jpg", "png", "jpeg"], key="agent_img_uploader")
-            if uploaded_image:
-                st.session_state.agent_image = uploaded_image
-                st.image(uploaded_image, caption="Uploaded", width=150)
-            elif st.session_state.agent_image:
-                st.image(st.session_state.agent_image, caption="Current image", width=150)
-                if st.button("Clear image"):
-                    st.session_state.agent_image = None
-                    st.rerun()
+def render_recipe_blog():
+    recipe = st.session_state.selected_recipe
+    
+    col_img, col_info = st.columns([1, 2])
+    with col_img:
+        img = get_recipe_image(recipe['image_name'])
+        if img: st.image(img, width=350)
+    
+    with col_info:
+        st.title(recipe['title'])
+        calories = recipe.get("calories_per_serving")
+        if calories and str(calories).lower() != 'nan':
+            st.write(f"**Calories per serving:** {int(float(calories))}")
         
-        with col2:
-            # Display history
-            for msg in st.session_state.agent_history:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+        btn_col1, btn_col2 = st.columns([1, 1])
+        with btn_col1:
+            chat_click = st.button(f"💬 Chat about this recipe", type="primary", use_container_width=True)
+        with btn_col2:
+            if st.button("⬅️ Back to Search", use_container_width=True):
+                st.session_state.view = 'home'
+                st.rerun()
 
-        # Input
-        if prompt := st.chat_input("How can I help you today?"):
-            st.session_state.agent_history.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+    if chat_click or st.session_state.active_chat:
+        st.session_state.active_chat = True
+        st.divider()
+        st.subheader(f"Conversation about {recipe['title']}")
+        for m in st.session_state.chat_history:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
 
-            with st.spinner("Thinking..."):
-                try:
-                    from agent import chat_with_agent
-                    
-                    # Pass image if available
-                    response_text = chat_with_agent(
-                        prompt, 
-                        st.session_state.agent_history,
-                        image_file=st.session_state.agent_image
-                    )
-                    
-                    st.session_state.agent_history.append({"role": "assistant", "content": response_text})
-                    with st.chat_message("assistant"):
-                        st.markdown(response_text)
-                except Exception as e:
-                    st.error(f"Agent Error: {e}")
+        if prompt := st.chat_input("Ask a question about this recipe..."):
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            with st.chat_message("user"): st.markdown(prompt)
+            response = f"I'm assisting you with the {recipe['title']}. How can I help with the steps?"
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            with st.chat_message("assistant"): st.markdown(response)
 
+    st.divider()
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Ingredients")
+        missing = recipe.get('missing_ingredients', [])
+        if st.session_state.search_type == "fridge" and missing:
+            st.error(f"**Missing:** {', '.join(missing)}")
+        st.markdown(format_instruction_list(recipe['ingredients']))
+    with c2:
+        st.subheader("Instructions")
+        st.markdown(format_instruction_list(recipe['instructions']))
+
+def render_ai_smart_search():
+    if st.button("⬅️ Back to Main UI"):
+        st.session_state.view = 'home'
+        st.rerun()
+    st.header("Culinary Compass AI 🤖")
+    if "agent_history" not in st.session_state: st.session_state.agent_history = []
+    uploaded_image = st.file_uploader("📸 Upload food image (optional)", type=["jpg", "png", "jpeg"])
+    for msg in st.session_state.agent_history:
+        with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    if prompt := st.chat_input("How can I help today?"):
+        st.session_state.agent_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): st.markdown(prompt)
+        with st.spinner("Thinking..."):
+            try:
+                from agent import chat_with_agent
+                res = chat_with_agent(prompt, st.session_state.agent_history, image_file=uploaded_image)
+                st.session_state.agent_history.append({"role": "assistant", "content": res})
+                with st.chat_message("assistant"): st.markdown(res)
+            except Exception as e: st.error(f"Agent Error: {e}")
+
+if st.session_state.view == 'home':
+    render_search_ui()
+    render_results_grid()
+elif st.session_state.view == 'detail':
+    render_recipe_blog()
+elif st.session_state.view == 'ai_search':
+    render_ai_smart_search()

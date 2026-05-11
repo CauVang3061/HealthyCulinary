@@ -28,6 +28,7 @@ load_dotenv()
 DB_PATH = "data/lancedb"
 TABLE_NAME = "recipes"
 SPOONACULAR_API_URL = "https://api.spoonacular.com/recipes/analyze"
+SPOONACULAR_API_URL = "https://api.spoonacular.com/recipes/analyze"
 SPOONACULAR_API_KEY = os.getenv("SPOONACULAR_API_KEY")
 
 # Rate limit handling
