@@ -49,6 +49,8 @@ def estimate_servings(instructions: str) -> int:
         r"makes\s+(\d+)(?:\s*[-to]+\s*(\d+))?",
         r"yield[s]?\s+(\d+)(?:\s*[-to]+\s*(\d+))?",
         r"servings?\s*[:\-]?\s*(\d+)(?:\s*[-to]+\s*(\d+))?",
+        r"cut\s+into\s+(\d+)\s+(?:pieces|slices|wedges)",
+        r"slice\s+into\s+(\d+)\s+(?:pieces|slices|wedges)",
     ]
 
     for pattern in patterns:
@@ -77,6 +79,47 @@ def parse_ingredients(ingredients_str: str) -> List[str]:
     return [part.strip() for part in ingredients_str.split(",") if part.strip()]
 
 
+def clean_ingredients(ingredients: List[str]) -> List[str]:
+    """Remove non-food or equipment lines that confuse parsing."""
+    if not ingredients:
+        return []
+
+    drop_phrases = [
+        "baking dish",
+        "baking sheet",
+        "rimmed baking sheet",
+        "sheet pan",
+        "pan",
+        "skillet",
+        "foil",
+        "plastic wrap",
+        "parchment",
+        "cooking spray",
+        "spray",
+        "paper towel",
+        "dishcloth",
+        "bowl",
+        "food processor",
+        "blender",
+        "rack",
+        "grill",
+        "oven",
+        "glass",
+    ]
+
+    cleaned = []
+    for item in ingredients:
+        text = item.strip()
+        lower = text.lower()
+        if not text:
+            continue
+        if any(phrase in lower for phrase in drop_phrases):
+            continue
+        cleaned.append(text)
+
+    return cleaned
+
+
 def categorize_calories(calories: Optional[float]) -> str:
     """Map calories per serving to Low/Medium/High labels."""
     if calories is None:
@@ -100,7 +143,7 @@ def analyze_calories(
 
     payload = {
         "title": title,
-        "servings": servings,
+        "servings": max(1, servings),
         "ingredients": ingredients,
         "instructions": instructions or "",
     }
@@ -121,21 +164,23 @@ def analyze_calories(
 
     data = response.json()
 
-    # Primary: nutrition nutrients list
+    servings = max(1, int(servings))
     nutrition = data.get("nutrition", {}) if isinstance(data, dict) else {}
     nutrients = nutrition.get("nutrients", []) if isinstance(nutrition, dict) else []
     for nutrient in nutrients:
         if str(nutrient.get("name", "")).lower() == "calories":
-            return float(nutrient.get("amount"))
+            return float(nutrient.get("amount")) / servings
 
-    # Fallback: top-level calories field
     if "calories" in data:
-        return float(data.get("calories"))
+        return float(data.get("calories")) / servings
 
     return None
 
 
-def get_unenriched_recipes(limit: Optional[int] = None) -> List[dict]:
+def get_unenriched_recipes(
+    limit: Optional[int] = None,
+    title_filter: Optional[str] = None,
+) -> List[dict]:
     """Find recipes missing calorie data."""
     db = lancedb.connect(DB_PATH)
     tbl = db.open_table(TABLE_NAME)
@@ -147,6 +192,9 @@ def get_unenriched_recipes(limit: Optional[int] = None) -> List[dict]:
         )
 
     unenriched = df[df["calories_per_serving"].isna()]
+    if title_filter:
+        pattern = re.escape(title_filter)
+        unenriched = unenriched[unenriched["title"].str.contains(pattern, case=False, na=False)]
     if limit:
         unenriched = unenriched.head(limit)
 
@@ -213,6 +261,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Resumable calorie enrichment")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--status", action="store_true")
+    parser.add_argument("--title", type=str, default=None, help="Filter by title substring")
     args = parser.parse_args()
 
     progress = get_progress()
@@ -236,7 +285,7 @@ def main() -> None:
         print("\n[DONE] All recipes already have calorie data.")
         return
 
-    recipes = get_unenriched_recipes(limit=args.limit)
+    recipes = get_unenriched_recipes(limit=args.limit, title_filter=args.title)
     if not recipes:
         print("\n[DONE] No recipes to enrich.")
         return
@@ -244,7 +293,7 @@ def main() -> None:
     enriched = []
     for i, recipe in enumerate(recipes, start=1):
         title = recipe["title"]
-        ingredients = parse_ingredients(recipe["ingredients"])
+        ingredients = clean_ingredients(parse_ingredients(recipe["ingredients"]))
         instructions = recipe["instructions"]
         servings = estimate_servings(instructions)
 
