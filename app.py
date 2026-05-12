@@ -5,6 +5,7 @@ import re
 from dotenv import load_dotenv
 from PIL import Image
 from search_engine import RecipeSearchEngine
+from agent import chat_with_agent
 
 load_dotenv()
 
@@ -182,13 +183,63 @@ def render_results_grid():
                         else:
                             st.warning(f"⚠️ Missing {len(missing)} items")
 
+# def render_recipe_blog():
+#     recipe = st.session_state.selected_recipe
+    
+#     col_img, col_info = st.columns([1, 2])
+#     with col_img:
+#         img = get_recipe_image(recipe['image_name'])
+#         if img: st.image(img, width=350)
+    
+#     with col_info:
+#         st.title(recipe['title'])
+#         calories = recipe.get("calories_per_serving")
+#         if calories and str(calories).lower() != 'nan':
+#             st.write(f"**Calories per serving:** {int(float(calories))}")
+        
+#         btn_col1, btn_col2 = st.columns([1, 1])
+#         with btn_col1:
+#             chat_click = st.button(f"💬 Chat about this recipe", type="primary", use_container_width=True)
+#         with btn_col2:
+#             if st.button("⬅️ Back to Search", use_container_width=True):
+#                 st.session_state.view = 'home'
+#                 st.rerun()
+
+#     if chat_click or st.session_state.active_chat:
+#         st.session_state.active_chat = True
+#         st.divider()
+#         st.subheader(f"Conversation about {recipe['title']}")
+#         for m in st.session_state.chat_history:
+#             with st.chat_message(m["role"]): st.markdown(m["content"])
+
+#         if prompt := st.chat_input("Ask a question about this recipe..."):
+#             st.session_state.chat_history.append({"role": "user", "content": prompt})
+#             with st.chat_message("user"): st.markdown(prompt)
+#             response = f"I'm assisting you with the {recipe['title']}. How can I help with the steps?"
+#             st.session_state.chat_history.append({"role": "assistant", "content": response})
+#             with st.chat_message("assistant"): st.markdown(response)
+
+#     st.divider()
+#     c1, c2 = st.columns(2)
+#     with c1:
+#         st.subheader("Ingredients")
+#         missing = recipe.get('missing_ingredients', [])
+#         if st.session_state.search_type == "fridge" and missing:
+#             st.error(f"**Missing:** {', '.join(missing)}")
+#         st.markdown(format_instruction_list(recipe['ingredients']))
+#     with c2:
+#         st.subheader("Instructions")
+#         st.markdown(format_cooking_steps(recipe['instructions']))
+
 def render_recipe_blog():
     recipe = st.session_state.selected_recipe
     
+    # 1. UI Layout: Header and Image
     col_img, col_info = st.columns([1, 2])
     with col_img:
         img = get_recipe_image(recipe['image_name'])
-        if img: st.image(img, width=350)
+        if img: 
+            st.image(img, width=350)
     
     with col_info:
         st.title(recipe['title'])
@@ -202,22 +253,43 @@ def render_recipe_blog():
         with btn_col2:
             if st.button("⬅️ Back to Search", use_container_width=True):
                 st.session_state.view = 'home'
+                # Clear chat history when leaving the recipe page to reset context
+                st.session_state.chat_history = []
+                st.session_state.active_chat = False
                 st.rerun()
 
+    # 2. Chat Interface Logic
     if chat_click or st.session_state.active_chat:
         st.session_state.active_chat = True
         st.divider()
         st.subheader(f"Conversation about {recipe['title']}")
+        
+        # Display existing chat history
         for m in st.session_state.chat_history:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
+            with st.chat_message(m["role"]): 
+                st.markdown(m["content"])
 
+        # Chat Input logic
         if prompt := st.chat_input("Ask a question about this recipe..."):
+            # Add user message to state and display
             st.session_state.chat_history.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
-            response = f"I'm assisting you with the {recipe['title']}. How can I help with the steps?"
+            with st.chat_message("user"): 
+                st.markdown(prompt)
+            
+            # Use a spinner for better UX while the LLM processes
+            with st.spinner("Analyzing recipe..."):
+                # We prefix the prompt to ensure the agent focuses on the current recipe details
+                contextual_prompt = f"Regarding the recipe for {recipe['title']}: {prompt}"
+                
+                # Call the logic from your agent.py script
+                response = chat_with_agent(contextual_prompt, history=st.session_state.chat_history)
+            
+            # Add assistant response to state and display
             st.session_state.chat_history.append({"role": "assistant", "content": response})
-            with st.chat_message("assistant"): st.markdown(response)
+            with st.chat_message("assistant"): 
+                st.markdown(response)
 
+    # 3. Ingredients and Instructions Display
     st.divider()
     c1, c2 = st.columns(2)
     with c1:
@@ -226,6 +298,7 @@ def render_recipe_blog():
         if st.session_state.search_type == "fridge" and missing:
             st.error(f"**Missing:** {', '.join(missing)}")
         st.markdown(format_instruction_list(recipe['ingredients']))
+        
     with c2:
         st.subheader("Instructions")
         st.markdown(format_cooking_steps(recipe['instructions']))
