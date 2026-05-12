@@ -302,4 +302,3 @@ class RecipeSearchEngine:
             results_df = results_df.sort_values(by=['match_count', 'missing_count'], ascending=[False, True]).head(top_k)
             
         return results_df
-

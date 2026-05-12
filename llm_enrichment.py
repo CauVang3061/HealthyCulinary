@@ -44,7 +44,6 @@ Return ONLY valid JSON, no other text. Example format:
 {{"visual_description": "Golden crispy potatoes with herbs and sea salt flakes", "tags": ["American", "Side Dish", "Vegetarian", "Comfort Food", "Crispy", "Potatoes"]}}
 """
 
-
 def encode_image_to_base64(image_path: str) -> str:
     """Encode an image file to base64 string."""
     with open(image_path, "rb") as image_file:
@@ -70,11 +69,11 @@ def analyze_recipe_image(client: Groq, image_path: str, title: str, ingredients:
     prompt = ENRICHMENT_PROMPT.format(title=title, ingredients=ingredients)
     
     try:
-        # Kiểm tra xem có ảnh hay không
+        # Check whether the image file exists or not
         has_image = os.path.exists(image_path)
         
         if has_image:
-            # Nếu có ảnh: Gửi cả ảnh + text
+            # If image: Encode image to base64 and include in the content
             image_base64 = encode_image_to_base64(image_path)
             media_type = get_image_media_type(image_path)
             content = [
@@ -82,7 +81,7 @@ def analyze_recipe_image(client: Groq, image_path: str, title: str, ingredients:
                 {"type": "text", "text": prompt}
             ]
         else:
-            # Nếu không có ẢNH: Chỉ gửi text (Text-only fallback)
+            # Text-only fallback
             print(f"  [INFO] No image for '{title}', using text-only enrichment.")
             content = [{"type": "text", "text": prompt}]
 
@@ -98,7 +97,7 @@ def analyze_recipe_image(client: Groq, image_path: str, title: str, ingredients:
         match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if match:
             response_text = match.group(0)
-        # Làm sạch JSON response (loại bỏ bất kỳ text nào không phải JSON)
+        # JSON response enhancement
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()
         elif "```" in response_text:
@@ -166,8 +165,6 @@ def batch_enrich_recipes(recipes: list[dict], images_dir: str = IMAGES_DIR) -> l
     print(f"\n[DONE] LLM enrichment complete! Processed {len(enriched_recipes)} recipes.")
     return enriched_recipes
 
-
-# --- Standalone execution for testing ---
 if __name__ == "__main__":
     # Test with sample data
     test_recipes = [
