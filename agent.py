@@ -402,6 +402,12 @@ def chat_with_agent(user_message: str, history: list = None, image_file = None) 
         # Handle knowledge/reasoning questions (no search needed)
         if parsed['query'] and parsed['query'].upper() == 'KNOWLEDGE':
             return parsed['response'] or "I can help with that question."
+
+        # Handle calorie check pipeline
+        if parsed.get("intent") == "CALORIE_CHECK":
+            meal_desc = parsed.get("query") or user_message
+            meal_type = (parsed.get("filter") or "general").strip().lower()
+            return handle_calories_check(meal_desc, meal_type)
         
         # Handle IMAGE_SEARCH - use hybrid image search
         if parsed['query'] and parsed['query'].upper().startswith('IMAGE_SEARCH'):
