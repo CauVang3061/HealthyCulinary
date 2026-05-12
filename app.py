@@ -10,7 +10,7 @@ from agent import chat_with_agent
 load_dotenv()
 
 
-st.set_page_config(page_title="Culinary Compass", page_icon="🧭", layout="wide")
+st.set_page_config(page_title="Healthy Culinary", page_icon="🧭", layout="wide")
 IMAGES_DIR = "Food Images"
 
 states = {
@@ -96,7 +96,7 @@ def get_recipe_image(image_name):
     return Image.open(image_path) if os.path.exists(image_path) else None
 
 def render_search_ui():
-    st.title("Culinary Compass 🧭")
+    st.title("Healthy Culinary 🧭")
     
     query = st.text_input(
         "Search by name, cuisine, or craving...", 
@@ -163,25 +163,40 @@ def render_results_grid():
         cols = st.columns(3)
         for i, (idx, row) in enumerate(results.iterrows()):
             with cols[i % 3]:
+                # Maintain fixed height to keep grid aligned
                 with st.container(border=True, height=500):
                     img = get_recipe_image(row['image_name'])
-                    if img: st.image(img, use_container_width=True)
+                    if img: 
+                        st.image(img, use_container_width=True)
+                    else:
+                        # Placeholder if image is missing to prevent layout jumps
+                        st.container(height=200, border=False)
                     
-                    if st.button(row['title'], key=f"btn_{idx}", use_container_width=True):
+                    # Use a standard button label but keep text consistent
+                    title = row['title']
+                    if st.button(title, key=f"btn_{idx}", use_container_width=True):
                         st.session_state.selected_recipe = row
                         st.session_state.view = 'detail'
                         st.rerun()
                     
+                    # STABILIZER: Check for calories
                     calories = row.get("calories_per_serving")
                     if calories and str(calories).lower() != 'nan':
                         st.caption(f"🔥 {int(float(calories))} Cal/serving")
-                    
+                    else:
+                        # This empty caption acts as a spacer to prevent "shaky text"
+                        st.caption("‎") # Contains an invisible Unicode character (U+200E)
+
+                    # Fridge search results spacing
                     if st.session_state.search_type == "fridge":
                         missing = row.get('missing_ingredients', [])
                         if not missing:
                             st.success("✅ Ready to cook!")
                         else:
                             st.warning(f"⚠️ Missing {len(missing)} items")
+                    else:
+                        # If not fridge search, add extra spacing to keep card full
+                        st.write("")
 
 def render_recipe_blog():
     recipe = st.session_state.selected_recipe
@@ -259,7 +274,7 @@ def render_ai_smart_search():
     if st.button("⬅️ Back to Main UI"):
         st.session_state.view = 'home'
         st.rerun()
-    st.header("Culinary Compass AI 🤖")
+    st.header("Healthy Culinary AI 🤖")
     if "agent_history" not in st.session_state: st.session_state.agent_history = []
     uploaded_image = st.file_uploader("📸 Upload food image (optional)", type=["jpg", "png", "jpeg"])
     for msg in st.session_state.agent_history:

@@ -187,6 +187,10 @@ class RecipeSearchEngine:
         print("  [Path A] CLIP visual similarity...")
         visual_results = self.search_by_image(image_file, top_k=10)
         
+        # FIX: Reset the file pointer back to the beginning before the next read
+        if hasattr(image_file, 'seek'):
+            image_file.seek(0)
+        
         # Path B: LLM caption → text search
         print("  [Path B] LLM semantic captioning...")
         caption = self._caption_image_groq(image_file)
