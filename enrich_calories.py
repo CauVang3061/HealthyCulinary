@@ -304,11 +304,11 @@ def main() -> None:
                 {
                     "id": recipe["id"],
                     "servings": servings,
-                    "calories_per_serving": calories,
-                    "calorie_level": categorize_calories(calories),
+                    "calories_per_serving": calories / servings,
+                    "calorie_level": categorize_calories(calories / servings),
                 }
             )
-            print(f"   [OK] Calories/serving: {calories}")
+            print(f"   [OK] Calories/serving: {calories / servings}")
         except Exception as exc:
             print(f"   [WARN] Failed: {exc}")
             enriched.append(
