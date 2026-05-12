@@ -1,6 +1,6 @@
-# 🧭 FlavourSeeker (Culinary Compass)
+# 🧭 HealthyCulinary (Culinary Compass)
 
-**FlavourSeeker** is a multimodal AI-powered recipe search engine. It helps you find the perfect dish using text descriptions, food images, or by checking what's in your pantry. Now enhanced with LLM-generated visual descriptions and smart tags for improved search relevance.
+**HealthyCulinary** is a multimodal AI-powered recipe search engine. It helps you find the perfect dish using text descriptions, food images, or by checking what's in your pantry. Now enhanced with LLM-generated visual descriptions and smart tags for improved search relevance. Besides, it helps you repare and balance your meal with a systematic calories evaluation, as well as a smart AI assisstant to suggest a healthier adjustment for your daily meal.
 
 ## 🌟 Features
 
@@ -16,16 +16,19 @@
 ## 📁 Project Structure
 
 ```
-FlavourSeeker/
-├── app.py              # Streamlit frontend
-├── search_engine.py    # Search logic (text, image, pantry)
-├── agent.py            # AI Chat agent (Groq Llama)
-├── ingest.py           # Phase 1: Data ingestion & embedding
-├── enrich_recipes.py   # Phase 2: Resumable LLM enrichment
-├── llm_enrichment.py   # Groq Vision API integration
-├── enrich_calories.py  # Resumable calorie enrichment (Spoonacular)
-├── requirements.txt    # Python dependencies
-└── run_app.bat         # Windows launcher
+CaloriesEvaluation/
+├── app.py               # Streamlit frontend
+├── search_engine.py     # Search logic (text, image, pantry)
+├── agent.py             # AI Chat agent (Groq Llama)
+├── ingest.py            # Phase 1: Data ingestion & embedding
+├── enrich_recipes.py    # Phase 2: Resumable LLM enrichment
+├── llm_enrichment.py    # Groq Vision API integration
+├── enrich_calories.py   # Resumable calorie enrichment (Spoonacular)
+├── calories_assessor.py # Calories assessment
+├── meal_parser.py       # Parse the meal into LanceDB
+├── suggest_engine.py    # Adjustment suggestion to balance the output meal
+├── requirements.txt     # Python dependencies
+└── run_app.bat          # Windows launcher
 ```
 
 ## 🛠️ Setup
@@ -38,13 +41,13 @@ FlavourSeeker/
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/jiu45/FlavourSeeker.git
-cd FlavourSeeker
+git clone https://github.com/CauVang3061/CaloriesEvaluation.git (branch thanh)
+cd CaloriesEvaluation
 pip install -r requirements.txt
 ```
 
 ### 3. Data Preparation
-Place your dataset in the root directory:
+Place your dataset in the root directory: (you can get the full dataset on: https://www.kaggle.com/datasets/pes12017000148/food-ingredients-and-recipe-dataset-with-images)
 1. **CSV File**: `Food Ingredients and Recipe Dataset with Image Name Mapping.csv`
 2. **Images Folder**: `Food Images/` (containing recipe JPG/PNG files)
 
