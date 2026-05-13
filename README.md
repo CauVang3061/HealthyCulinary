@@ -16,7 +16,7 @@
 ## 📁 Project Structure
 
 ```
-CaloriesEvaluation/
+HealthyCulinary/
 ├── app.py               # Streamlit frontend
 ├── search_engine.py     # Search logic (text, image, pantry)
 ├── agent.py             # AI Chat agent (Groq Llama)
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 ```
 
 ### 3. Data Preparation
-Place your dataset in the root directory: (you can get the full dataset on: https://www.kaggle.com/datasets/pes12017000148/food-ingredients-and-recipe-dataset-with-images)
+Place your dataset in the root directory (you can get the full dataset on: https://www.kaggle.com/datasets/pes12017000148/food-ingredients-and-recipe-dataset-with-images):
 1. **CSV File**: `Food Ingredients and Recipe Dataset with Image Name Mapping.csv`
 2. **Images Folder**: `Food Images/` (containing recipe JPG/PNG files)
 
@@ -73,11 +73,18 @@ python enrich_recipes.py --status    # Check progress
 - **Resumable**: Run multiple times to complete large datasets
 - Progress is saved after each recipe
 
-### Optional: Calorie Enrichment (Resumable, API)
+### Phase 3: Calorie Enrichment (Resumable, API)
 ```bash
 python enrich_calories.py
 python enrich_calories.py --limit 50
 python enrich_calories.py --status
+```
+
+### Phase 4: Calling Suggestion
+```bash
+python meal_parser.py
+python calories_assessor.py
+python suggest_engine.py
 ```
 - Uses Spoonacular's `analyzeRecipe` API
 - Stores `calories_per_serving`, `calorie_level`, and `servings`

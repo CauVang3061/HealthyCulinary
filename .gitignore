@@ -26,9 +26,11 @@ run_app.bat
 
 Food Images/
 
-Food Ingredients and Recipe Dataset with Image Name Mapping.csv
-
 # Local testing and development scripts
 test.py
 expand_dataset.py
 update_embeddings.py
+
+# Others
+Report.pdf
+Video Demo.txt
