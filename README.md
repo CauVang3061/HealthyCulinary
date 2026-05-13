@@ -1,6 +1,6 @@
-# 🧭 FlavourSeeker (Culinary Compass)
+# 🧭 HealthyCulinary (Culinary Compass)
 
-**FlavourSeeker** is a multimodal AI-powered recipe search engine. It helps you find the perfect dish using text descriptions, food images, or by checking what's in your pantry. Now enhanced with LLM-generated visual descriptions and smart tags for improved search relevance.
+**HealthyCulinary** is a multimodal AI-powered recipe search engine. It helps you find the perfect dish using text descriptions, food images, or by checking what's in your pantry. Now enhanced with LLM-generated visual descriptions and smart tags for improved search relevance.
 
 ## 🌟 Features
 
@@ -13,21 +13,6 @@
 - **LLM Enrichment**: Recipes are enriched with AI-generated visual descriptions and tags (cuisine, diet, course, vibe) for better search results.
 - **Calorie Enrichment**: Optional per-serving calorie estimates with Low/Medium/High labels (Spoonacular API).
 
-## 📁 Project Structure
-
-```
-FlavourSeeker/
-├── app.py              # Streamlit frontend
-├── search_engine.py    # Search logic (text, image, pantry)
-├── agent.py            # AI Chat agent (Groq Llama)
-├── ingest.py           # Phase 1: Data ingestion & embedding
-├── enrich_recipes.py   # Phase 2: Resumable LLM enrichment
-├── llm_enrichment.py   # Groq Vision API integration
-├── enrich_calories.py  # Resumable calorie enrichment (Spoonacular)
-├── requirements.txt    # Python dependencies
-└── run_app.bat         # Windows launcher
-```
-
 ## 🛠️ Setup
 
 ### 1. Prerequisites
@@ -38,8 +23,8 @@ FlavourSeeker/
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/jiu45/FlavourSeeker.git
-cd FlavourSeeker
+git clone https://github.com/CauVang3061/CaloriesEvaluation.git
+cd CaloriesEvaluation
 pip install -r requirements.txt
 ```
 

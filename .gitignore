@@ -31,4 +31,7 @@ Food Ingredients and Recipe Dataset with Image Name Mapping.csv
 # Local testing and development scripts
 test.py
 expand_dataset.py
-update_embeddings.py
+
+# Others
+.pdf
+Video Demo.txt
